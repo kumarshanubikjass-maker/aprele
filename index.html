@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Апрель — Интерактивный поиск по шкафам</title>
+    <!-- Tailwind CSS for modern responsive utility-first styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tailwind Custom Configuration for Apple-like theme and brand colors -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            indigo: '#2F2580',
+                            pink: '#DC007B',
+                            lightBg: '#F8FAFC',
+                            cardBg: '#FFFFFF',
+                            borderLight: '#E2E8F0',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['-apple-system', 'BlinkMacSystemFont', "Segoe UI", 'Roboto', 'Helvetica', 'Arial', sans-serif],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #F0F2F5;
+            color: #1E293B;
+            -webkit-font-smoothing: antialiased;
+        }
+        .apple-glass {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .glow-search:focus-within {
+            box-shadow: 0 0 25px rgba(47, 37, 128, 0.15), 0 0 10px rgba(220, 0, 123, 0.1);
+            border-color: #2F2580;
+        }
+        /* Custom scrollbar for clean minimal aesthetic */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #CBD5E1;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94A3B8;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans selection:bg-[#DC007B] selection:text-white relative">
+
+    <!-- Header -->
+    <header class="sticky top-0 z-30 apple-glass border-b border-brand-borderLight transition-all duration-300">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#2F2580] to-[#DC007B] flex items-center justify-center text-white shadow-md shadow-brand-indigo/20">
+                    <i class="fa-solid fa-prescription-bottle-medical text-lg"></i>
+                </div>
+                <div>
+                    <span class="text-xs font-semibold tracking-wider text-[#DC007B] uppercase block">Аптечный склад</span>
+                    <h1 class="text-xl font-bold tracking-tight text-[#2F2580]">Апрель</h1>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-3">
+                <button type="button" id="infoBtn" class="px-3.5 py-2 rounded-full text-xs font-medium bg-white border border-brand-borderLight text-slate-700 hover:bg-slate-50 transition shadow-sm flex items-center space-x-1.5 cursor-pointer">
+                    <i class="fa-solid fa-circle-info text-[#2F2580]"></i>
+                    <span class="hidden sm:inline">Как это устроено?</span>
+                </button>
+                <button type="button" id="adminBtn" class="px-5 py-2 rounded-full text-sm font-medium bg-[#2F2580] text-white hover:bg-[#231b63] transition shadow-lg shadow-brand-indigo/25 flex items-center space-x-2 cursor-pointer z-40 relative">
+                    <i class="fa-solid fa-lock text-xs"></i>
+                    <span>Админка</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-8 flex flex-col items-center">
+        
+        <!-- Big Hero Title & Search -->
+        <div class="w-full text-center mt-6 mb-3 sm:mt-10 sm:mb-5 space-y-6">
+            <h2 class="text-4xl sm:text-6xl font-extrabold tracking-tight text-[#2F2580]">
+                Апрель
+            </h2>
+            <p class="text-slate-500 text-sm sm:text-base max-w-md mx-auto">
+                Интеллектуальная система быстрого поиска лекарств по шкафам и стеллажам. Введите название препарата ниже.
+            </p>
+
+            <!-- Search Bar with Glow Effect -->
+            <div class="max-w-2xl mx-auto w-full relative">
+                <div class="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none text-slate-400">
+                    <i class="fa-solid fa-magnifying-glass text-lg"></i>
+                </div>
+                <div class="glow-search flex items-center bg-white border-2 border-brand-borderLight rounded-2xl shadow-xl shadow-slate-200/60 transition-all duration-300">
+                    <input 
+                        type="text" 
+                        id="searchInput" 
+                        placeholder="Например: Аспирин, Анальгин, Парацетамол..." 
+                        class="w-full pl-14 pr-12 py-4 bg-transparent text-slate-800 placeholder-slate-400 text-base sm:text-lg focus:outline-none rounded-2xl"
+                        autofocus
+                    >
+                    <button type="button" id="clearSearchBtn" class="hidden pr-5 text-slate-400 hover:text-[#DC007B] transition cursor-pointer">
+                        <i class="fa-solid fa-circle-xmark text-lg"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Quick search stats & filters -->
+            <div id="searchStats" class="text-xs text-slate-400 font-medium pt-1"></div>
+        </div>
+
+        <!-- Results Container -->
+        <div id="cabinetsContainer" class="w-full grid grid-cols-1 md:grid-cols-2 gap-5 mt-1"></div>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="hidden flex-col items-center justify-center py-16 text-center w-full">
+            <div class="w-16 h-16 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mb-4 text-2xl">
+                <i class="fa-solid fa-box-open"></i>
+            </div>
+            <h3 class="text-lg font-bold text-slate-700">Ничего не найдено</h3>
+            <p class="text-sm text-slate-500 max-w-sm mt-1">По вашему запросу шкафы или препараты не обнаружены. Попробуйте изменить поисковый запрос или добавьте препарат в Админке.</p>
+        </div>
+
+    </main>
+
+    <!-- Admin Modal -->
+    <div id="adminModal" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden border border-slate-100 transform transition-all">
+            <!-- Modal Header -->
+            <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <div class="flex items-center space-x-3">
+                    <div class="w-9 h-9 rounded-xl bg-[#2F2580]/10 text-[#2F2580] flex items-center justify-center">
+                        <i class="fa-solid fa-sliders"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-lg text-slate-800">Админ-панель шкафов</h3>
+                        <p class="text-xs text-slate-500">Управление хранилищами (до 130 шкафов/стеллажей)</p>
+                    </div>
+                </div>
+                <button type="button" id="closeAdminBtn" class="w-9 h-9 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-800 flex items-center justify-center transition cursor-pointer">
+                    <i class="fa-solid fa-xmark text-sm"></i>
+                </button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="p-6 overflow-y-auto flex-1 space-y-6">
+                <!-- Add new cabinet action bar -->
+                <div class="bg-[#F8FAFC] border border-brand-borderLight rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <div>
+                        <h4 class="font-semibold text-sm text-slate-800">Добавить новое хранилище</h4>
+                        <p class="text-xs text-slate-500" id="cabinetCountIndicator">Всего создано: 0 из 130</p>
+                    </div>
+                    <button type="button" id="addCabinetBtn" class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-[#DC007B] hover:bg-[#c2006b] text-white text-sm font-medium shadow-md shadow-brand-pink/20 transition flex items-center justify-center space-x-2 cursor-pointer">
+                        <i class="fa-solid fa-plus text-xs"></i>
+                        <span>Добавить шкаф / стеллаж</span>
+                    </button>
+                </div>
+
+                <!-- Accordion List of Cabinets -->
+                <div id="adminCabinetsList" class="space-y-3"></div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex justify-end">
+                <button type="button" id="closeAdminBottomBtn" class="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-sm font-medium transition shadow-sm cursor-pointer">
+                    Готово / Сохранить
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Delete Confirmation Modal -->
+    <div id="deleteConfirmModal" class="fixed inset-0 z-[70] bg-slate-900/60 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 text-center space-y-5 border border-slate-100 transform transition-all scale-100 animate-in">
+            <div class="w-14 h-14 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mx-auto text-2xl shadow-inner">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <div class="space-y-1.5">
+                <h3 class="font-bold text-lg text-slate-800">Точно ли хотите удалить?</h3>
+                <p class="text-xs text-slate-500 leading-relaxed" id="deleteConfirmText">Шкаф и все содержащиеся в нем препараты будут удалены без возможности восстановления.</p>
+            </div>
+            <div class="flex items-center space-x-3 pt-2">
+                <button type="button" id="cancelDeleteBtn" class="flex-1 py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium transition cursor-pointer">
+                    Отмена
+                </button>
+                <button type="button" id="confirmDeleteBtn" class="flex-1 py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition shadow-md shadow-red-500/20 cursor-pointer">
+                    Удалить
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Info Modal -->
+    <div id="infoModal" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-xl w-full p-6 sm:p-8 space-y-6 relative border border-slate-100">
+            <div class="flex items-center space-x-3">
+                <div class="w-12 h-12 rounded-2xl bg-[#DC007B]/10 text-[#DC007B] flex items-center justify-center text-xl font-bold">
+                    <i class="fa-solid fa-book-open-reader"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-xl text-slate-800">Руководство пользователя</h3>
+                    <p class="text-xs text-slate-500">Как быстро настроить и искать препараты</p>
+                </div>
+            </div>
+
+            <div class="space-y-3 text-sm text-slate-600 leading-relaxed">
+                <div class="p-4 bg-brand-lightBg rounded-2xl border border-brand-borderLight space-y-2">
+                    <h4 class="font-semibold text-[#2F2580] flex items-center space-x-2">
+                        <i class="fa-solid fa-sliders text-[#DC007B]"></i>
+                        <span>1. Настройка в Админке</span>
+                    </h4>
+                    <p class="text-xs sm:text-sm text-slate-600">
+                        Откройте «Админку», создайте шкаф или стеллаж, переименуйте его под свои нужды, укажите описание (категорию или группу препаратов) и добавьте внутрь список нужных лекарств.
+                    </p>
+                </div>
+
+                <div class="p-4 bg-brand-lightBg rounded-2xl border border-brand-borderLight space-y-2">
+                    <h4 class="font-semibold text-[#2F2580] flex items-center space-x-2">
+                        <i class="fa-solid fa-magnifying-glass text-[#DC007B]"></i>
+                        <span>2. Умный поиск на главном экране</span>
+                    </h4>
+                    <p class="text-xs sm:text-sm text-slate-600">
+                        Вводите название препарата в поисковую строку на главном экране. Система мгновенно покажет, в каком именно шкафу и в какой категории он находится.
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex justify-end pt-2">
+                <button type="button" id="closeInfoBtn" class="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-[#2F2580] hover:bg-[#231b63] text-white text-sm font-medium transition shadow-md shadow-brand-indigo/20 cursor-pointer">
+                    Все понятно, спасибо!
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase & Main Application Script -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const appId = 'aprel-pharmacy-app-v1';
+        const firebaseConfig = {
+            apiKey: "AIzaSyAyOaMhyGRXCJ3YbdhGdE8RKCi-uqc8Jys",
+            authDomain: "aprel-c6a80.firebaseapp.com",
+            projectId: "aprel-c6a80",
+            storageBucket: "aprel-c6a80.firebasestorage.app",
+            messagingSenderId: "460676761174",
+            appId: "1:460676761174:web:fa966175fbec29a7fe9df7"
+        };
+
+        let app, db, auth;
+        let cabinetsCache = [];
+        let unsubscribeCabinets = null;
+        let cabinetToDeleteId = null;
+
+        try {
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+
+            const initAuth = async () => {
+                try {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                    startCabinetsListener();
+                } catch (err) {
+                    console.error("Auth error:", err);
+                    loadDefaultMockData();
+                }
+            };
+            initAuth();
+        } catch (e) {
+            loadDefaultMockData();
+        }
+
+        function getCabinetsCollectionRef() {
+            return collection(db, 'artifacts', appId, 'public', 'data', 'cabinets');
+        }
+
+        function startCabinetsListener() {
+            try {
+                const colRef = getCabinetsCollectionRef();
+                unsubscribeCabinets = onSnapshot(colRef, (snapshot) => {
+                    const loaded = [];
+                    snapshot.forEach(docSnap => {
+                        loaded.push({ id: docSnap.id, ...docSnap.data() });
+                    });
+                    
+                    loaded.sort((a, b) => {
+                        const numA = parseInt((a.name || '').replace(/[^0-9]/g, '')) || 0;
+                        const numB = parseInt((b.name || '').replace(/[^0-9]/g, '')) || 0;
+                        return numA - numB;
+                    });
+                    cabinetsCache = loaded;
+                    updateUI();
+                }, (error) => {
+                    loadDefaultMockData();
+                });
+            } catch (err) {
+                loadDefaultMockData();
+            }
+        }
+
+        function loadDefaultMockData() {
+            cabinetsCache = [];
+            updateUI();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const adminBtn = document.getElementById('adminBtn');
+            const adminModal = document.getElementById('adminModal');
+            const closeAdminBtn = document.getElementById('closeAdminBtn');
+            const closeAdminBottomBtn = document.getElementById('closeAdminBottomBtn');
+
+            const infoBtn = document.getElementById('infoBtn');
+            const infoModal = document.getElementById('infoModal');
+            const closeInfoBtn = document.getElementById('closeInfoBtn');
+
+            const searchInput = document.getElementById('searchInput');
+            const clearSearchBtn = document.getElementById('clearSearchBtn');
+            const addCabinetBtn = document.getElementById('addCabinetBtn');
+
+            const deleteConfirmModal = document.getElementById('deleteConfirmModal');
+            const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+            const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+
+            if (adminBtn) {
+                adminBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    if (adminModal) {
+                        adminModal.classList.remove('hidden');
+                        renderAdminList();
+                    }
+                });
+            }
+
+            [closeAdminBtn, closeAdminBottomBtn].forEach(btn => {
+                if (btn) {
+                    btn.addEventListener('click', () => {
+                        if (adminModal) adminModal.classList.add('hidden');
+                        updateUI();
+                    });
+                }
+            });
+
+            if (cancelDeleteBtn) {
+                cancelDeleteBtn.addEventListener('click', () => {
+                    if (deleteConfirmModal) deleteConfirmModal.classList.add('hidden');
+                    cabinetToDeleteId = null;
+                });
+            }
+
+            if (confirmDeleteBtn) {
+                confirmDeleteBtn.addEventListener('click', async () => {
+                    if (!cabinetToDeleteId) return;
+                    const cabId = cabinetToDeleteId;
+                    
+                    if (deleteConfirmModal) deleteConfirmModal.classList.add('hidden');
+                    cabinetToDeleteId = null;
+
+                    cabinetsCache = cabinetsCache.filter(c => c.id !== cabId);
+                    updateUI();
+
+                    try {
+                        await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'cabinets', cabId));
+                    } catch (e) {
+                        console.error("Error deleting cabinet from cloud:", e);
+                    }
+                });
+            }
+
+            if (infoBtn) {
+                infoBtn.addEventListener('click', () => {
+                    if (infoModal) infoModal.classList.remove('hidden');
+                });
+            }
+
+            if (closeInfoBtn) {
+                closeInfoBtn.addEventListener('click', () => {
+                    if (infoModal) infoModal.classList.add('hidden');
+                });
+            }
+
+            if (searchInput) {
+                searchInput.addEventListener('input', (e) => {
+                    const val = e.target.value;
+                    if (clearSearchBtn) {
+                        if (val.trim() !== '') {
+                            clearSearchBtn.classList.remove('hidden');
+                        } else {
+                            clearSearchBtn.classList.add('hidden');
+                        }
+                    }
+                    updateUI();
+                });
+            }
+
+            if (clearSearchBtn) {
+                clearSearchBtn.addEventListener('click', () => {
+                    if (searchInput) {
+                        searchInput.value = '';
+                        clearSearchBtn.classList.add('hidden');
+                        searchInput.focus();
+                        updateUI();
+                    }
+                });
+            }
+
+            if (addCabinetBtn) {
+                addCabinetBtn.addEventListener('click', async () => {
+                    if (cabinetsCache.length >= 130) {
+                        const countEl = document.getElementById('cabinetCountIndicator');
+                        if (countEl) {
+                            countEl.innerText = "Достигнут максимальный лимит в 130 шкафов!";
+                            countEl.classList.add('text-red-600', 'font-bold');
+                            setTimeout(() => {
+                                countEl.classList.remove('text-red-600', 'font-bold');
+                                countEl.innerText = `Всего создано: ${cabinetsCache.length} из 130`;
+                            }, 3000);
+                        }
+                        return;
+                    }
+                    const newId = 'cab_' + Date.now();
+                    const newName = `Шкаф ${cabinetsCache.length + 1}`;
+                    const newCab = {
+                        name: newName,
+                        description: 'Новое хранилище медикаментов.',
+                        tags: [],
+                        updatedAt: Date.now()
+                    };
+
+                    cabinetsCache.push({ id: newId, ...newCab });
+                    updateUI();
+
+                    try {
+                        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'cabinets', newId), newCab);
+                    } catch (e) {
+                        console.error("Error adding cabinet to cloud:", e);
+                    }
+                });
+            }
+        });
+
+        function updateUI() {
+            const searchInput = document.getElementById('searchInput');
+            const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
+            renderMainResults(query);
+            renderAdminList();
+            
+            const countEl = document.getElementById('cabinetCountIndicator');
+            if (countEl && !countEl.classList.contains('text-red-600')) {
+                countEl.innerText = `Всего создано: ${cabinetsCache.length} из 130`;
+            }
+        }
+
+        function renderMainResults(searchQuery) {
+            const container = document.getElementById('cabinetsContainer');
+            const emptyState = document.getElementById('emptyState');
+            const statsEl = document.getElementById('searchStats');
+            
+            if (!container) return;
+            container.innerHTML = '';
+
+            let filtered = cabinetsCache;
+            if (searchQuery !== '') {
+                filtered = cabinetsCache.filter(cab => {
+                    const matchName = cab.name.toLowerCase().includes(searchQuery);
+                    const matchDesc = cab.description && cab.description.toLowerCase().includes(searchQuery);
+                    const matchTags = cab.tags && cab.tags.some(t => t.toLowerCase().includes(searchQuery));
+                    return matchName || matchDesc || matchTags;
+                });
+            }
+
+            if (statsEl) {
+                if (searchQuery !== '') {
+                    statsEl.innerText = `Найдено шкафов: ${filtered.length} из ${cabinetsCache.length} (макс. 130)`;
+                } else {
+                    statsEl.innerText = '';
+                }
+            }
+
+            if (filtered.length === 0) {
+                if (emptyState) {
+                    emptyState.classList.remove('hidden');
+                    emptyState.classList.add('flex');
+                }
+                return;
+            } else {
+                if (emptyState) {
+                    emptyState.classList.remove('flex');
+                    emptyState.classList.add('hidden');
+                }
+            }
+
+            filtered.forEach(cab => {
+                const card = document.createElement('div');
+                card.className = "bg-gradient-to-br from-white to-slate-50/90 rounded-3xl p-6 shadow-md hover:shadow-xl border-2 border-slate-300/80 transition-all duration-300 flex flex-col justify-between group";
+
+                let tagsHtml = '';
+                if (cab.tags && cab.tags.length > 0) {
+                    tagsHtml = cab.tags.map(tag => {
+                        const isMatch = searchQuery !== '' && tag.toLowerCase().includes(searchQuery);
+                        const tagClass = isMatch 
+                            ? "bg-[#DC007B] text-white font-bold shadow-sm" 
+                            : "bg-white text-slate-700 hover:bg-slate-100 border border-slate-200/80 font-medium";
+                        return `<span class="px-3 py-1.5 rounded-xl text-xs transition ${tagClass}">${tag}</span>`;
+                    }).join('');
+                } else {
+                    tagsHtml = `<span class="text-xs text-slate-400 italic">В этом шкафу пока нет зарегистрированных препаратов</span>`;
+                }
+
+                card.innerHTML = `
+                    <div>
+                        <div class="flex items-start justify-between mb-3">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-11 h-11 rounded-2xl bg-[#2F2580] text-white flex items-center justify-center font-bold text-base shadow-sm shadow-[#2F2580]/30">
+                                    <i class="fa-solid fa-box"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-extrabold text-lg text-[#2F2580]">${escapeHtml(cab.name)}</h3>
+                                    <p class="text-xs text-slate-600 font-medium mt-0.5">${escapeHtml(cab.description || 'Без описания')}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-4 pt-3.5 border-t border-slate-200/60">
+                            <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-2">Препараты в шкафу:</span>
+                            <div class="flex flex-wrap gap-1.5">
+                                ${tagsHtml}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function renderAdminList() {
+            const adminListEl = document.getElementById('adminCabinetsList');
+            if (!adminListEl) return;
+            
+            const openAccordions = {};
+            adminListEl.querySelectorAll('[id^="acc_"]').forEach(acc => {
+                if (!acc.classList.contains('hidden')) {
+                    const id = acc.id.replace('acc_', '');
+                    openAccordions[id] = true;
+                }
+            });
+
+            adminListEl.innerHTML = '';
+
+            if (cabinetsCache.length === 0) {
+                adminListEl.innerHTML = ``;
+                return;
+            }
+
+            cabinetsCache.forEach((cab, index) => {
+                const item = document.createElement('div');
+                item.className = "bg-white border border-brand-borderLight rounded-2xl p-4 shadow-sm space-y-3 transition";
+
+                let adminTagsHtml = '';
+                if (cab.tags && cab.tags.length > 0) {
+                    adminTagsHtml = cab.tags.map((tag, tIndex) => `
+                        <span class="inline-flex items-center space-x-1.5 px-3 py-1 rounded-xl bg-slate-100 border border-slate-200 text-xs font-medium text-slate-700">
+                            <span>${escapeHtml(tag)}</span>
+                            <button type="button" onclick="window.removeTag('${cab.id}', ${tIndex})" class="text-slate-400 hover:text-red-600 ml-1 transition cursor-pointer">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </span>
+                    `).join('');
+                } else {
+                    adminTagsHtml = `<span class="text-xs text-slate-400 italic">Препараты не добавлены</span>`;
+                }
+
+                const descriptionSubText = cab.description && cab.description.trim() !== '' 
+                    ? `<p class="text-xs text-slate-500 truncate max-w-xs sm:max-w-md">${escapeHtml(cab.description)}</p>` 
+                    : `<p class="text-xs text-slate-400 italic">Без описания</p>`;
+
+                const isOpen = openAccordions[cab.id];
+                const hiddenClass = isOpen ? '' : 'hidden';
+                const rotateClass = isOpen ? 'rotate-180' : '';
+
+                item.innerHTML = `
+                    <div class="flex items-center justify-between cursor-pointer" onclick="window.toggleAccordion('${cab.id}')">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 rounded-lg bg-indigo-50 text-[#2F2580] flex items-center justify-center font-bold text-xs">
+                                ${index + 1}
+                            </div>
+                            <div>
+                                <span class="font-bold text-sm text-slate-800 block">${escapeHtml(cab.name)}</span>
+                                ${descriptionSubText}
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button type="button" onclick="event.stopPropagation(); window.deleteCabinet('${cab.id}')" class="w-8 h-8 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition cursor-pointer" title="Удалить шкаф">
+                                <i class="fa-solid fa-trash-can text-xs"></i>
+                            </button>
+                            <i id="icon_${cab.id}" class="fa-solid fa-chevron-down text-xs text-slate-400 transition-transform ${rotateClass}"></i>
+                        </div>
+                    </div>
+
+                    <div id="acc_${cab.id}" class="${hiddenClass} pt-3 border-t border-slate-100 space-y-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-500 uppercase mb-1">Наименование шкафа / стеллажа</label>
+                                <input type="text" id="name_${cab.id}" value="${escapeHtml(cab.name)}" oninput="window.saveCabinetFieldSilent('${cab.id}', 'name', this.value)" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-[#2F2580]">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-500 uppercase mb-1">Описание / расположение</label>
+                                <input type="text" id="desc_${cab.id}" value="${escapeHtml(cab.description || '')}" oninput="window.saveCabinetFieldSilent('${cab.id}', 'description', this.value)" placeholder="Например: Кардиологический сектор..." class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-[#2F2580]">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-500 uppercase mb-1.5">Препараты (теги) в этом шкафу</label>
+                            <div class="flex flex-wrap gap-1.5 mb-2.5">
+                                ${adminTagsHtml}
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <input type="text" id="newtag_${cab.id}" placeholder="Введите название препарата..." class="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-[#DC007B]" onkeypress="if(event.key === 'Enter') { window.addTag('${cab.id}'); }">
+                                <button type="button" onclick="window.addTag('${cab.id}')" class="px-4 py-2 bg-[#DC007B] hover:bg-[#c2006b] text-white text-xs font-medium rounded-xl transition shadow-sm cursor-pointer">
+                                    Добавить
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                adminListEl.appendChild(item);
+            });
+        }
+
+        window.toggleAccordion = function(cabId) {
+            const acc = document.getElementById(`acc_${cabId}`);
+            const icon = document.getElementById(`icon_${cabId}`);
+            if (acc) {
+                if (acc.classList.contains('hidden')) {
+                    acc.classList.remove('hidden');
+                    if (icon) icon.classList.add('rotate-180');
+                } else {
+                    acc.classList.add('hidden');
+                    if (icon) icon.classList.remove('rotate-180');
+                }
+            }
+        };
+
+        window.saveCabinetFieldSilent = async function(cabId, field, value) {
+            const cab = cabinetsCache.find(c => c.id === cabId);
+            if (!cab) return;
+            cab[field] = value.trim();
+            cab.updatedAt = Date.now();
+
+            try {
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'cabinets', cabId), {
+                    name: cab.name,
+                    description: cab.description,
+                    tags: cab.tags,
+                    updatedAt: cab.updatedAt
+                }, { merge: true });
+            } catch (e) {
+                console.error("Error updating cabinet field:", e);
+            }
+        };
+
+        window.deleteCabinet = function(cabId) {
+            const cab = cabinetsCache.find(c => c.id === cabId);
+            if (!cab) return;
+            
+            cabinetToDeleteId = cabId;
+            const deleteConfirmText = document.getElementById('deleteConfirmText');
+            if (deleteConfirmText) {
+                deleteConfirmText.innerHTML = `Шкаф <b>"${escapeHtml(cab.name)}"</b> и все содержащиеся в нем препараты будут удалены без возможности восстановления.`;
+            }
+
+            const deleteConfirmModal = document.getElementById('deleteConfirmModal');
+            if (deleteConfirmModal) {
+                deleteConfirmModal.classList.remove('hidden');
+            }
+        };
+
+        window.addTag = async function(cabId) {
+            const input = document.getElementById(`newtag_${cabId}`);
+            if (!input) return;
+            const tagVal = input.value.trim();
+            if (!tagVal) return;
+
+            const cab = cabinetsCache.find(c => c.id === cabId);
+            if (!cab) return;
+
+            if (!cab.tags) cab.tags = [];
+            if (!cab.tags.includes(tagVal)) {
+                cab.tags.push(tagVal);
+                input.value = '';
+                cab.updatedAt = Date.now();
+                updateUI();
+                const acc = document.getElementById(`acc_${cabId}`);
+                if (acc) acc.classList.remove('hidden');
+
+                try {
+                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'cabinets', cabId), {
+                        name: cab.name,
+                        description: cab.description,
+                        tags: cab.tags,
+                        updatedAt: cab.updatedAt
+                    }, { merge: true });
+                } catch (e) {
+                    console.error("Error adding tag:", e);
+                }
+            }
+        };
+
+        window.removeTag = async function(cabId, tagIndex) {
+            const cab = cabinetsCache.find(c => c.id === cabId);
+            if (!cab || !cab.tags) return;
+
+            cab.tags.splice(tagIndex, 1);
+            cab.updatedAt = Date.now();
+            updateUI();
+            
+            const acc = document.getElementById(`acc_${cabId}`);
+            if (acc) acc.classList.remove('hidden');
+
+            try {
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'cabinets', cabId), {
+                    name: cab.name,
+                    description: cab.description,
+                    tags: cab.tags,
+                    updatedAt: cab.updatedAt
+                }, { merge: true });
+            } catch (e) {
+                console.error("Error removing tag:", e);
+            }
+        };
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, "&amp;")
+                      .replace(/</g, "&lt;")
+                      .replace(/>/g, "&gt;")
+                      .replace(/"/g, "&quot;")
+                      .replace(/@/g, "&#39;");
+        }
+    </script>
+</body>
+</html>
